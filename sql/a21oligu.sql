@@ -36,6 +36,12 @@ CREATE TABLE Spann (
     primary key (namn)
 )ENGINE=INNODB;
 
+CREATE TABLE Fabrik (
+	id int,
+	namn varchar(32),
+    primary key (id)
+)ENGINE=INNODB;
+
 /* Inheritance using alt. C */
 CREATE TABLE Ren (
 	nr smallint,
@@ -49,7 +55,7 @@ CREATE TABLE Ren (
     
     /* pensionerad ren */
     pölseburknr char(17), /* Antagande: alla burknr följer samma format som i exempel, varav char(17) */
-    fabriknamn varchar(32),
+    fabrik int, /* int som pekar på id i tabell Fabrik */
     smak varchar(32),
     
     /* typ som indentifierar typ av ren (pensionerad/tjänste ren) */
@@ -57,7 +63,8 @@ CREATE TABLE Ren (
     
     check (underart IN ("pearyi", "tarandus", "buskensis", "caboti", "dawsoni", "sibericus")), /* limitera underart till specifierade värden */
     primary key (nr, klan, underart),
-    foreign key (spann) references Spann(namn)
+    foreign key (spann) references Spann(namn),
+    foreign key (fabrik) references Fabrik(id)
 )ENGINE=INNODB;
 
 CREATE TABLE Mat (
@@ -67,10 +74,11 @@ CREATE TABLE Mat (
     primary key (namn)
 )ENGINE=INNODB;
 
-CREATE TABLE MatSmak ( /* egen tabell för smak då den kan va stor, 1-1 */
+CREATE TABLE MatSmak ( /* egen tabell för smak då den också kan vara en beskrivning, 1-1 */
 	namn varchar(32),
     smak varchar(255),
-    primary key (namn)
+    primary key (namn),
+    foreign key (namn) references Mat(namn)
 )ENGINE=INNODB;
 
 /* RELATIONER */
