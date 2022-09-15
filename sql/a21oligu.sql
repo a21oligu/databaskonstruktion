@@ -3,6 +3,8 @@ drop database if exists a21oligu;
 create database a21oligu;
 use a21oligu;
 
+/*CREATE USER "admin"@"%" IDENTIFIED BY "password";*/
+
 /* 
 Tomtens renar identifieras av deras rennummer (11 siffrors löpnummer) eller deras namn som i
 sin tur består av renens klan-namn och underart (underarten kan vara någon av pearyi / tarandus /
@@ -42,6 +44,18 @@ CREATE TABLE Fabrik (
     primary key (id)
 )ENGINE=INNODB;
 
+CREATE TABLE Stank (
+	id tinyint unsigned,
+    namn varchar(32),
+    primary key (id)
+)ENGINE=INNODB;
+
+CREATE TABLE Tillverkare (
+	id smallint,
+    namn varchar(32),
+    primary key (id)
+)ENGINE=INNODB;
+
 /* Inheritance using alt. C */
 CREATE TABLE Ren (
 	nr smallint,
@@ -63,15 +77,17 @@ CREATE TABLE Ren (
     
     check (underart IN ("pearyi", "tarandus", "buskensis", "caboti", "dawsoni", "sibericus")), /* limitera underart till specifierade värden */
     primary key (nr, klan, underart),
+    foreign key (stank) references Stank(id),
     foreign key (spann) references Spann(namn),
     foreign key (fabrik) references Fabrik(id)
 )ENGINE=INNODB;
 
 CREATE TABLE Mat (
 	namn varchar(32),
-    tillverkare varchar(32),
+    tillverkare smallint,
     maginivå smallint,
-    primary key (namn)
+    primary key (namn),
+    foreign key (tillverkare) references Tillverkare(id)
 )ENGINE=INNODB;
 
 CREATE TABLE MatSmak ( /* egen tabell för smak då den också kan vara en beskrivning, 1-1 */
@@ -117,11 +133,54 @@ CREATE TABLE RenPris (
     FOREIGN KEY (nr, klan, underart) REFERENCES Ren(nr, klan, underart)
 )ENGINE=INNODB;
 
+/* PROCEDURES */
+
+
+/* RULE CHECKING TRIGGERS */
+
+DELIMITER &&
+/* Kollar om ett spanns kapacitet är uppnåd innan en insert */
+CREATE TRIGGER SpannKapacitetCheck 
+BEFORE INSERT 
+ON Ren FOR EACH ROW 
+BEGIN
+	DECLARE rowCount smallint;
+    DECLARE maxCapacity smallint;
+    
+    SELECT COUNT(*)
+    INTO rowCount
+    FROM Ren
+    WHERE Ren.spann = NEW.spann;
+    
+    SELECT kapacitet
+    INTO maxCapacity
+    FROM Spann
+    WHERE Spann.namn = NEW.spann;
+    
+	IF rowCount >= maxCapacity THEN
+		SET @message = concat(NEW.spann, " has reached its max capacity of ", maxCapacity);
+		SIGNAL SQLSTATE "45000" set message_text = @message;
+    END IF;
+END &&
+
 /* TESTNING AV TABELLER */
-INSERT INTO Spann VALUES ("spann1", 20);
-INSERT INTO Ren values (0, "klan1", "buskensis", "skit", "spann1");
-INSERT INTO Ren values (0, "klan1", "fails", "skit", "spann1"); /* SHOULD FAIL */
-INSERT INTO Mat VALUES ("Falukorv", "körv", "scan", 200);
-INSERT INTO Mat VALUES ("Pölse", "körv", "scan", 200);
-INSERT INTO RenÄterMat VALUES ("Falukorv", 0, "buskensis", "kung");
-INSERT INTO RenÄterMat VALUES ("Pölse", 0, "buskensis", "kung"); /* SHOULD FAIL */
+INSERT INTO Tillverkare VALUES (0, "Scan");
+
+INSERT INTO Stank VALUES (5, "Skit");
+
+INSERT INTO Spann VALUES ("spann1", 3);
+
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (0, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+
+/* INSERT INTO Ren values (0, "klan1", "fails", "skit", "spann1"); /* SHOULD FAIL */
+INSERT INTO Mat VALUES ("Falukorv", 0, 200);
+INSERT INTO Mat VALUES ("Pölse", 0, 1337);
+INSERT INTO RenÄterMat VALUES ("Falukorv", 0, "klan1", "buskensis");
+/* INSERT INTO RenÄterMat VALUES ("Pölse", 0, "buskensis", "kung"); /* SHOULD FAIL */
+
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (1, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (2, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+
+SELECT *
+FROM Ren
+WHERE Ren.spann = "spann1";
