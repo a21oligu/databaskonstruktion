@@ -163,6 +163,8 @@ BEGIN
     END IF;
 END &&
 
+DELIMITER ;
+
 /* TESTNING AV TABELLER */
 INSERT INTO Tillverkare VALUES (0, "Scan");
 
