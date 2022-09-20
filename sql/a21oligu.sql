@@ -73,9 +73,9 @@ CREATE TABLE Tillverkare (
 
 /* Inheritance using alt. C */
 CREATE TABLE Ren (
-	nr smallint,
-    klan varchar(32), 
-    underart varchar(10),
+	nr char(11),
+    klan varchar(32) NOT NULL, 
+    underart varchar(10) NOT NULL,
     stank tinyint unsigned NOT NULL,
     spann varchar(32),
     
@@ -87,14 +87,17 @@ CREATE TABLE Ren (
     fabrik int, /* int som pekar på id i tabell Fabrik */
     smak varchar(32),
     
-    /* typ som indentifierar typ av ren (pensionerad/tjänste ren) */
+    /* typ som indentifierar typ av ren (pensionerad/tjänste) */
     typ varchar(16),
     
     check (underart IN ("pearyi", "tarandus", "buskensis", "caboti", "dawsoni", "sibericus")), /* limitera underart till specifierade värden */
-    primary key (nr, klan, underart),
+    primary key (nr),
     foreign key (stank) references Stank(id),
     foreign key (spann) references Spann(namn),
-    foreign key (fabrik) references Fabrik(id)
+    foreign key (fabrik) references Fabrik(id),
+    
+    # Index på namn (klan + underart)
+    INDEX namn (klan, underart)
 )ENGINE=INNODB;
 
 CREATE TABLE Mat (
@@ -115,37 +118,28 @@ CREATE TABLE MatSmak ( /* egen tabell för smak då den också kan vara en beskr
 /* RELATIONER */
 CREATE TABLE RenÄterMat (
 	mat varchar(32),
-    nr smallint,
-    klan varchar(32),
-    underart varchar(10),
+    nr char(11),
     check (mat != "pölse"),
-    primary key (mat, nr, klan, underart),
-    foreign key (nr, klan, underart) references Ren(nr, klan, underart)
+    primary key (mat, nr),
+    foreign key (nr) references Ren(nr)
 )ENGINE=INNODB;
 
 CREATE TABLE JobbatMed (
-	ren1_nr smallint,
-    ren1_klan varchar(32),
-    ren1_underart varchar(10),
+	ren1_nr char(11),
+    ren2_nr char(11),
     
-    ren2_nr smallint,
-    ren2_klan varchar(32),
-    ren2_underart varchar(10),
-    
-    primary key (ren1_nr, ren1_klan, ren1_underart, ren2_nr, ren2_klan, ren2_underart),
-    foreign key (ren1_nr, ren1_klan, ren1_underart) references Ren(nr, klan, underart),
-    foreign key (ren2_nr, ren2_klan, ren2_underart) references Ren(nr, klan, underart)
+    primary key (ren1_nr, ren2_nr),
+    foreign key (ren1_nr) references Ren(nr),
+    foreign key (ren2_nr) references Ren(nr)
 )ENGINE=INNODB;
 
 /* MULTIVÄRDA ATTRIBUT */
 CREATE TABLE RenPris (
-	nr smallint,
-    klan varchar(32),
-    underart varchar(10),
+	nr char(11),
     titel varchar(32),
     årtal smallint unsigned NOT NULL,
-    PRIMARY KEY (nr, klan, underart, titel, årtal),
-    FOREIGN KEY (nr, klan, underart) REFERENCES Ren(nr, klan, underart)
+    PRIMARY KEY (nr, titel, årtal),
+    FOREIGN KEY (nr) REFERENCES Ren(nr)
 )ENGINE=INNODB;
 
 /* VIEWS */
@@ -166,37 +160,50 @@ WHERE AntalRenarISpann.spann = Spann.namn;
 DELIMITER &&
 
 # Räkna ut antal renar i ett spann
-CREATE PROCEDURE SpannAntal(spann VARCHAR(32), OUT res INT)
+CREATE PROCEDURE RenarISpann(spann VARCHAR(32))
 BEGIN
-	DECLARE antal INT;
-    
-	SELECT COUNT(*)
-    INTO antal
+	SELECT *
     FROM Ren
     WHERE Ren.spann = spann;
-    
-    SET res = antal;
 END &&
 
-# Räkne ut andel av kapacitet som är upptagen i ett spann
-CREATE PROCEDURE SpannAndel(spann VARCHAR(32), OUT andel REAL)
+CREATE PROCEDURE PensioneraRen(
+nr char(11), 
+burknr char(17), 
+fabrik smallint unsigned,
+smak varchar(255))
 BEGIN
-	DECLARE antal INT;
-    DECLARE maxCap INT; # Max kapacitet
+
+	/*IF (USER() != "tomtefar@%") THEN
+		SET @message = CONCAT("Permission denied for [", USER(), "]");
+		SIGNAL SQLSTATE "45001" set message_text = @message;
+    END IF;*/
     
-    CALL SpannAntal(spann, antal); # Sätter antal med 
+    DECLARE typ varchar(32) DEFAULT "none";
     
-    SELECT antal / Spann.kapacitet
-    INTO andel
-    FROM Spann
-    WHERE spann = Spann.namn;
+    # Hämta typ för vald ren
+    SELECT Ren.typ INTO typ FROM Ren WHERE Ren.nr = nr;
+    
+    IF (typ = "none" ) THEN
+		SET @message = CONCAT("No ren with nr ", nr);
+        SIGNAL SQLSTATE "45000" set message_text = @message;
+    END IF;
+		
+	# Guard som kollar att vald ren inte redan är pensionerad
+    IF (typ != "tjänste") THEN
+		SET @message = CONCAT("Ren with löpnummer ", nr, " has already retired");
+		SIGNAL SQLSTATE "45000" set message_text = @message;
+    END IF;
+
+	# Uppdatera värden för den nypensionerade renen, behåll oberörd data
+	UPDATE Ren 
+    SET Ren.pölseburknr = burknr, Ren.fabrik = fabrik, Ren.smak = smak, Ren.typ = "pensionerad"
+    WHERE Ren.nr = nr;
     
 END &&
 
-/* RULE CHECKING TRIGGERS */
-
-
-/* Kollar om ett spanns kapacitet är uppnåd innan en insert */
+/* TRIGGERS */
+#Kollar om ett spanns kapacitet är uppnåd innan en insert (rule checking)
 CREATE TRIGGER SpannKapacitetCheck BEFORE INSERT ON Ren 
 FOR EACH ROW 
 BEGIN
@@ -214,34 +221,47 @@ BEGIN
 END &&
 
 # Logga vid insert av spann
-CREATE TRIGGER SpannInsertLogg AFTER INSERT ON Ren
+CREATE TRIGGER SpannInsertLogg AFTER INSERT ON Spann
 FOR EACH ROW
 BEGIN
-	#INSERT INTO SpannLogg VALUES ();
+	INSERT INTO SpannLogg VALUES ("INSERT", USER(), NEW.namn, CURRENT_TIMESTAMP());
 END &&
 
 DELIMITER ;
 
+/* INDEXES */
+
 /* TESTNING AV TABELLER */
 INSERT INTO Tillverkare VALUES (0, "Scan");
+INSERT INTO Fabrik VALUES (0, "Tomtens slakteri");
 
 INSERT INTO Stank VALUES (5, "Skit");
 
 INSERT INTO Spann VALUES ("spann1", 3);
 INSERT INTO Spann VALUES ("spann2", 1);
 
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (0, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111111", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
 
 /* INSERT INTO Ren values (0, "klan1", "fails", "skit", "spann1"); /* SHOULD FAIL */
 INSERT INTO Mat VALUES ("Falukorv", 0, 3);
 INSERT INTO Mat VALUES ("Pölse", 0, 1337);
-INSERT INTO RenÄterMat VALUES ("Falukorv", 0, "klan1", "buskensis");
+INSERT INTO RenÄterMat VALUES ("Falukorv", "11111111111");
 /* INSERT INTO RenÄterMat VALUES ("Pölse", 0, "buskensis", "kung"); /* SHOULD FAIL */
 
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (1, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (2, "klan1", "buskensis", 5, "spann2", 2000, "tjänste");
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values (3, "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111112", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111113", "klan1", "buskensis", 5, "spann2", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111114", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
 
 SELECT * FROM AntalRenarISpann;
 
 SELECT * FROM AndelAvKapacitetISpann WHERE spann = "spann2";
+
+SELECT * FROM SpannLogg;
+
+CALL RenarISpann("spann1");
+CALL RenarISpann("spann1");
+
+CALL PensioneraRen("11111111111", "307.2461-307.2467", 0, "Tvärgo korv");
+# CALL PensioneraRen("11111111111", "307.2461-307.2467", 0, "Tvärgo korv"); /* SHOULD FAIL */
+
+SELECT * FROM Ren;
