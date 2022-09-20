@@ -36,6 +36,16 @@ det blir problem med redan genomförda bokningar eller problem med att göra nya
 
 */
 
+/* LOGG TABELLER */
+
+# Tabell för att logga händelser i Spann tabellen.
+CREATE TABLE SpannLogg (
+	operation VARCHAR(16),
+	användare varchar(32),
+    spann VARCHAR(32),
+    tid TIMESTAMP
+)ENGINE=INNODB;
+
 /* TABELLER */
 CREATE TABLE Spann (
 	namn varchar(32),
@@ -201,6 +211,13 @@ BEGIN
 		SET @message = concat(NEW.spann, " has reached its maximum capacity");
 		SIGNAL SQLSTATE "45000" set message_text = @message;
     END IF;
+END &&
+
+# Logga vid insert av spann
+CREATE TRIGGER SpannInsertLogg AFTER INSERT ON Ren
+FOR EACH ROW
+BEGIN
+	#INSERT INTO SpannLogg VALUES ();
 END &&
 
 DELIMITER ;
