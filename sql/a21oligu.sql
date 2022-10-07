@@ -10,32 +10,6 @@ CREATE USER IF NOT EXISTS "admin"@"%" IDENTIFIED BY "admin";
 # Ge användaren tomtefar alla privilegier
 GRANT ALL PRIVILEGES ON a21oligu.* TO "tomtefar"@"%";
 
-/* 
-Tomtens renar identifieras av deras rennummer (11 siffrors löpnummer) eller deras namn som i
-sin tur består av renens klan-namn och underart (underarten kan vara någon av pearyi / tarandus /
-buskensis / caboti / dawsoni / sibericus). Renarna har ett värde som beskriver renens stank som
-anges i fem steg från “tolererbar” till “så man svimmar”. En ren kan även ha vunnit ett antal
-priser som tomten delar ut varje år. Varje pris består av en titel och ett årtal exv “Snabbaste
-2016” eller “Värsta stanken 2019”. För varje ren ska det gå att beräkna vilka regioner renen
-tjänstgjort i.
-Det finns två typer av renar, tjänste-renar och pensionerade renar. För att nissen som
-administrerar slädarna ska veta om renarna fungerar tillsammans, så lagras vilka renar som den
-tidigare arbetat tillsammans med. En ren måste delta i exakt ett renspann men ett renspann kan
-ha noll eller flera renar. En ren administreras av noll eller flera mellanchefer.
-
-Tjänsteren: En ren som är i tjänst har en lön som sätts in på ett numrerat bankkonto.
-
-Pensionerad ren: När en ren “pensioneras” skickas den omedelbart till pölsa-fabriken för att
-direkt omsättas till pölsa. Serienumret för pölsa-burkarna som renen hamnar i lagras i systemet
-som ett värde exv 307.2461-307.2467. Utöver detta lagras namnet på pölsa-fabriken och
-smaksättningen på pölsan (exv “Extra Kryddpeppar” eller “Utan Mejram”). När en ren
-pensioneras så ska databasen ej förändras i övrigt (för att bibehålla historiken). Dock ska det av
-förklarliga orsaker inte vara möjligt att boka ett renspann om någon av renarna är pensionerad.
-Oftast pensionerar administratörer eller mellanchefer hela renspann på en gång för att undvika att
-det blir problem med redan genomförda bokningar eller problem med att göra nya bokningar.
-
-*/
-
 /* LOGG TABELLER */
 
 # Tabell för att logga händelser i Spann tabellen.
@@ -60,7 +34,7 @@ CREATE TABLE Fabrik (
 )ENGINE=INNODB;
 
 CREATE TABLE Stank (
-	id tinyint unsigned,
+	id smallint unsigned,
     namn varchar(32),
     primary key (id)
 )ENGINE=INNODB;
@@ -71,12 +45,25 @@ CREATE TABLE Tillverkare (
     primary key (id)
 )ENGINE=INNODB;
 
+CREATE TABLE Klan (
+	id smallint unsigned,
+    namn varchar(32),
+    primary key (id)
+)ENGINE=INNODB;
+
+CREATE TABLE Underart (
+	id smallint unsigned,
+    namn varchar(32),
+    primary key (id),
+    check (namn IN ("pearyi", "tarandus", "buskensis", "caboti", "dawsoni", "sibericus"))
+)ENGINE=INNODB;
+
 /* Inheritance using alt. C */
 CREATE TABLE Ren (
 	nr char(11),
-    klan varchar(32) NOT NULL, 
-    underart varchar(10) NOT NULL,
-    stank tinyint unsigned NOT NULL,
+    klan smallint unsigned NOT NULL, 
+    underart smallint unsigned NOT NULL,
+    stank smallint unsigned,
     spann varchar(32),
     
     /* tjänste-ren*/
@@ -89,12 +76,13 @@ CREATE TABLE Ren (
     
     /* typ som indentifierar typ av ren (pensionerad/tjänste) */
     typ varchar(16),
-    
-    check (underart IN ("pearyi", "tarandus", "buskensis", "caboti", "dawsoni", "sibericus")), /* limitera underart till specifierade värden */
+
     primary key (nr),
     foreign key (stank) references Stank(id),
     foreign key (spann) references Spann(namn),
     foreign key (fabrik) references Fabrik(id),
+    foreign key (klan) references Klan(id),
+    foreign key (underart) references Underart(id),
     
     # Index på namn (klan + underart)
     INDEX namn (klan, underart)
@@ -172,13 +160,7 @@ nr char(11),
 burknr char(17), 
 fabrik smallint unsigned,
 smak varchar(255))
-BEGIN
-
-	/*IF (USER() != "tomtefar@%") THEN
-		SET @message = CONCAT("Permission denied for [", USER(), "]");
-		SIGNAL SQLSTATE "45001" set message_text = @message;
-    END IF;*/
-    
+BEGIN    
     DECLARE typ varchar(32) DEFAULT "none";
     
     # Hämta typ för vald ren
@@ -234,13 +216,32 @@ DELIMITER ;
 /* TESTNING AV TABELLER */
 INSERT INTO Tillverkare VALUES (0, "Scan");
 INSERT INTO Fabrik VALUES (0, "Tomtens slakteri");
+INSERT INTO Fabrik VALUES (1, "Skövdes Renslakteri");
 
-INSERT INTO Stank VALUES (5, "Skit");
+INSERT INTO Klan VALUES (0, "Sverige");
+INSERT INTO Klan VALUES (1, "Norge");
+INSERT INTO Klan VALUES (2, "Island");
+INSERT INTO Klan VALUES (3, "Sydafrika");
+
+INSERT INTO Underart VALUES (0, "pearyi");
+INSERT INTO Underart VALUES (1, "tarandus");
+INSERT INTO Underart VALUES (2, "buskensis");
+INSERT INTO Underart VALUES (3, "caboti");
+INSERT INTO Underart VALUES (4, "dawsoni");
+INSERT INTO Underart VALUES (5, "sibericus");
+
+INSERT INTO Stank VALUES (1, "Parfym");
+INSERT INTO Stank VALUES (2, "Gott");
+INSERT INTO Stank VALUES (3, "OK");
+INSERT INTO Stank VALUES (4, "Skit");
+INSERT INTO Stank VALUES (5, "Livsfara");
+
 
 INSERT INTO Spann VALUES ("spann1", 3);
 INSERT INTO Spann VALUES ("spann2", 1);
+INSERT INTO Spann VALUES ("spann3", 15);
 
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111111", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111111", 0, 3, 5, "spann1", 2000, "tjänste");
 
 /* INSERT INTO Ren values (0, "klan1", "fails", "skit", "spann1"); /* SHOULD FAIL */
 INSERT INTO Mat VALUES ("Falukorv", 0, 3);
@@ -248,9 +249,10 @@ INSERT INTO Mat VALUES ("Pölse", 0, 1337);
 INSERT INTO RenÄterMat VALUES ("Falukorv", "11111111111");
 /* INSERT INTO RenÄterMat VALUES ("Pölse", 0, "buskensis", "kung"); /* SHOULD FAIL */
 
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111112", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111113", "klan1", "buskensis", 5, "spann2", 2000, "tjänste");
-INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111114", "klan1", "buskensis", 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111112", 0, 1, 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111113", 0, 1, 5, "spann2", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111114", 1, 5, 5, "spann1", 2000, "tjänste");
+INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("13371111114", 1, 2, 3, "spann3", 6789, "tjänste");
 
 SELECT * FROM AntalRenarISpann;
 
@@ -258,7 +260,6 @@ SELECT * FROM AndelAvKapacitetISpann WHERE spann = "spann2";
 
 SELECT * FROM SpannLogg;
 
-CALL RenarISpann("spann1");
 CALL RenarISpann("spann1");
 
 CALL PensioneraRen("11111111111", "307.2461-307.2467", 0, "Tvärgo korv");

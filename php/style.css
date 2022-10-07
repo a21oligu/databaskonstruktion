@@ -1,0 +1,152 @@
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+table {
+  border: 1px solid #202020;
+  border-spacing: 0;
+}
+
+td,
+th {
+  border: 1px solid #202020;
+  padding: 1rem;
+}
+
+th {
+  background-color: #1b5180;
+}
+
+/* td.nopadding {
+  padding: 0;
+}
+
+td.nopadding > form > button {
+  height: 100%;
+} */
+
+td > form {
+  width: 100%;
+  height: 100%;
+}
+
+.row:nth-child(even) {
+  background: green;
+}
+
+table + table {
+  margin-top: 1rem;
+}
+
+body {
+  background-color: #303030;
+  font-family: 'arial';
+  color: white;
+}
+
+#tables {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+#search {
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+}
+
+#search-form {
+  width: 100%;
+  display: flex;
+  gap: 0.5rem;
+  width: max-content;
+  justify-content: start;
+  margin-bottom: 1rem;
+}
+
+#pensionera-form {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+}
+
+#pensionera-form > input {
+  width: 100%;
+}
+
+main {
+  display: flex;
+  flex: 1;
+  background-color: red;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+#sidemenu {
+  padding: 1rem 2rem;
+  background-color: #202020;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidemenu-item {
+  padding: 1rem;
+  background-color: #303030;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sidemenu-item,
+.sidemenu-item:visited {
+  color: white;
+}
+
+.sidemenu-item.active {
+  background-color: #1b5180;
+  pointer-events: none;
+}
+
+#content {
+  background-color: #303030;
+  width: 100%;
+  padding: 1rem;
+  overflow: auto;
+}
+
+input[type='text'],
+select,
+form > button {
+  background-color: #202020;
+  padding: 0.5rem;
+  color: white;
+  border: none;
+}
+
+button[type='submit'] {
+  background-color: rgb(31, 119, 31);
+}
+
+#pensionera {
+  background-color: brown;
+}
+
+#inputs {
+  margin-bottom: 0.5rem;
+}
+
+#pensionera {
+  background-color: brown;
+}
+
+/* Search form */
