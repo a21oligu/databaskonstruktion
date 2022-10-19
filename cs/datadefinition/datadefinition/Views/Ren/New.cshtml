@@ -1,0 +1,27 @@
+﻿@{
+}
+
+<form method="post" action="@Url.Action("InsertRen", "Ren")">
+    <input name="nr" type="text" placeholder="Löpnummer" />
+    <select name="klan">
+        @foreach(var klan in ViewBag.KlanTable.Rows) {
+            <option value="@klan["id"]">@klan["namn"]</option>
+        }
+    </select>
+    <select name="underart">
+        @foreach(var underart in ViewBag.UnderartTable.Rows) {
+            <option value="@underart["id"]">@underart["namn"]</option>
+        }
+    </select>
+    <select name="spann">
+        @foreach(var spann in ViewBag.SpannTable.Rows) {
+            <option value="@spann["namn"]">@spann["namn"]</option>
+        }
+    </select>
+    <select name="stank">
+        @foreach(var stank in ViewBag.StankTable.Rows) {
+            <option value="@stank["id"]">@stank["namn"]</option>
+        }
+    </select>
+    <button type="submit">Lägg till ren</button>
+</form>

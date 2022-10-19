@@ -246,7 +246,7 @@ INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("1111111111
 /* INSERT INTO Ren values (0, "klan1", "fails", "skit", "spann1"); /* SHOULD FAIL */
 INSERT INTO Mat VALUES ("Falukorv", 0, 3);
 INSERT INTO Mat VALUES ("Pölse", 0, 1337);
-INSERT INTO RenÄterMat VALUES ("Falukorv", "11111111111");
+#INSERT INTO RenÄterMat VALUES ("Falukorv", "11111111111");
 /* INSERT INTO RenÄterMat VALUES ("Pölse", 0, "buskensis", "kung"); /* SHOULD FAIL */
 
 INSERT INTO Ren(nr, klan, underart, stank, spann, lön, typ) values ("11111111112", 0, 1, 5, "spann1", 2000, "tjänste");

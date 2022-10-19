@@ -1,0 +1,35 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<div class="text-center">
+    @if (ViewBag.SpannTable.Rows.Count > 0)
+    {
+        <table>
+            <tr>
+            @foreach (var spannCol in ViewBag.SpannTable.Columns)
+            {
+                <th>@spannCol.ColumnName</th>
+            }
+            </tr>
+            @foreach (var spann in ViewBag.SpannTable.Rows)
+            {
+                <tr>
+                    @for (int i = 0; i < ViewBag.SpannTable.Columns.Count; ++i)
+                {
+                        <td>@spann[i]</td>
+                }
+
+                    <td>@Html.ActionLink("Delete", "DeleteSpann", "Home", new { namn = spann["namn"] })</td>
+                </tr>
+            }
+        </table>
+    }
+    else
+    {
+            <h2>No result</h2>
+            <form method="get" action="@Url.Action("Index", "Ren")">
+                <button>Visa alla</button>
+            </form>
+    }
+</div>

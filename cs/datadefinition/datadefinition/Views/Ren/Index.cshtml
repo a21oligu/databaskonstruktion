@@ -1,0 +1,37 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<div class="text-center">
+    <form method="get" action="@Url.Action("Index", "Ren")">
+        <input name="nr" type="text" placeholder="Sök med löpnummer" value="@(ViewBag.Search ?? "")" />
+        <button type="submit">Sök</button>
+    </form>
+    @if (ViewBag.RenarTable.Rows.Count > 0) {
+        <table>
+            <tr>
+                @foreach (var renColumn in ViewBag.RenarTable.Columns)
+                {
+                    <th>@renColumn.ColumnName</th>
+                }
+            </tr>
+        @foreach (var renRow in ViewBag.RenarTable.Rows)
+        {
+            <tr>
+            @for (int i = 0; i < ViewBag.RenarTable.Columns.Count; ++i)
+            {
+                <td>@renRow[i]</td>
+            }
+
+                <td>@Html.ActionLink("Delete", "DeleteRen", "Ren", new { nr = renRow["nr"] }, new { title = "Delete" })</td>
+                <td>@Html.ActionLink("Pensionera", "Pensionera", "Ren", new { nr = renRow["nr"] }, new { title = "Delete" })</td>
+            </tr>
+        }
+    </table>
+    } else {
+        <h2>No result</h2>
+        <form method="get" action="@Url.Action("Index", "Ren")">
+            <button>Visa alla</button>
+        </form>
+    }
+</div>

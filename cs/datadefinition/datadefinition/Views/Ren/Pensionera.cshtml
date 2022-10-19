@@ -1,0 +1,17 @@
+﻿@{
+}
+
+<h3>Pensionera ren [@ViewBag.Nr]</h3>
+<form action="@Url.Action("PensioneraRen", "Ren")">
+    <section>
+        <input type="hidden" name="nr" value="@ViewBag.Nr" />
+        <input type="text" name="smak" placeholder="Smak på pölse" required />
+        <select name="fabrik">
+            @foreach (var fabrik in ViewBag.FabrikTable.Rows)
+            {
+                <option value="@fabrik["id"]">@fabrik["namn"]</option>
+            }
+        </select>
+    </section>
+    <button type="submit" >Pensionera</button>
+</form>
