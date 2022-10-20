@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 
@@ -24,7 +25,6 @@ namespace mvc_connect_model_to_mysql.Models
             DataSet ds = new();
             adapter.Fill(ds, "result");
             DataTable renar = ds.Tables["result"] ?? new DataTable();
-            //Console.WriteLine("Result: " + renar.ToString());
             connection.Close();
 
             return renar;
@@ -39,7 +39,8 @@ namespace mvc_connect_model_to_mysql.Models
 
             MySqlConnection connection = new(_connectionString);
             connection.Open();
-            MySqlDataAdapter adapter = new("SELECT * FROM Ren WHERE nr LIKE '%" + nr + "%';", connection);
+            MySqlDataAdapter adapter = new("SELECT * FROM Ren WHERE nr LIKE @nr;", connection);
+            adapter.SelectCommand.Parameters.AddWithValue("@nr", string.Format("%{0}%", nr));
             DataSet ds = new();
             adapter.Fill(ds, "result");
             DataTable renar = ds.Tables["result"] ?? new DataTable();
